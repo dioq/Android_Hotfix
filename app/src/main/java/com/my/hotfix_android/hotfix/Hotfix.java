@@ -63,7 +63,13 @@ public class Hotfix {
         }
     }
 
-    //根据文件列表 获取到dex 文件
+    /*
+    * 需要分析这两个类
+    * http://androidxref.com/6.0.0_r1/xref/libcore/dalvik/src/main/java/dalvik/system/BaseDexClassLoader.java
+    * http://androidxref.com/6.0.0_r1/xref/libcore/dalvik/src/main/java/dalvik/system/DexPathList.java#dexElements
+    * */
+
+    //通过反射拿到 DexPathList 类里的 dexElements
     private static Object getDexElements(Object pathListObj) throws Exception {
         Class cls = Class.forName("dalvik.system.DexPathList");
         Field localField = cls.getDeclaredField("dexElements");
@@ -71,7 +77,7 @@ public class Hotfix {
         return localField.get(pathListObj);
     }
 
-    //获取dex文件列表
+    //通过反射拿到 BaseDexClassLoader 类里的 pathList
     private static Object getPathList(Object baseDexClassLoader) throws Exception {
         Class cls = Class.forName("dalvik.system.BaseDexClassLoader");
         Field localField = cls.getDeclaredField("pathList");
@@ -102,6 +108,7 @@ public class Hotfix {
         return result;
     }
 
+    //替换dex文件
     private static void setField(Object obj, Class<?> cls, Object value) throws Exception {
         Field localField = cls.getDeclaredField("dexElements");
         localField.setAccessible(true);
