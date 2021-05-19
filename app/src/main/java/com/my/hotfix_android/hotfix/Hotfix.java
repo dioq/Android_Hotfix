@@ -17,17 +17,17 @@ public class Hotfix {
      * 参考文章
      * https://blog.csdn.net/dsczxcc/article/details/83865395
      * */
-    public void dynamicUpdate(Context context) {
-        File cacheFile = context.getDir("dex", 0);
-        String dex_store_path = cacheFile.getAbsolutePath() + File.separator + "target";
-        File des_store_file = new File(dex_store_path);//classes2.dex 在本地保存的文件
+    public static void dynamicUpdate(Context context) {
+        File cacheFile = context.getDir("dex", 0);//此目录下,只有你自己的应用有权限访问
+        String dex_store_path = cacheFile.getAbsolutePath() + File.separator + "target.dex";
+        File des_store_file = new File(dex_store_path);//JudgeInputStr.dex 复制的目标目录
 
         String dex_parsed_path = cacheFile.getAbsolutePath() + File.separator + "parsed_dex_file";
-        File dex_parsed_folder = new File(dex_parsed_path);//target解析成dex 后存放的文件夹
+        File dex_parsed_folder = new File(dex_parsed_path);//JudgeInputStr.dex解析成dex 后存放的文件夹
         try {
             if (!des_store_file.exists()) {
                 if (!des_store_file.createNewFile()) return;
-                //把assets classes2.dex文件 里的二进制数据 复制到 本地文件里
+                //把assets 里的 xxx.dex文件 复制到 本地文件里
                 FileUtils.copyFiles(context, "JudgeInputStr.dex", des_store_file);
             }
             if (!dex_parsed_folder.exists()) {
@@ -44,30 +44,30 @@ public class Hotfix {
         //根据本地文件路径获取要加载的dex文件
         DexClassLoader dexClassLoader = new DexClassLoader(dex_store_path, dex_parsed_path, null, context.getClassLoader());
 
-
         try {
             //原来的dexElements
             ClassLoader baseDexClassLoader = context.getClassLoader();
-            Object dexElements = getDexElements(getPathList(baseDexClassLoader));
-            //新的dexElements
-            Object pathDexElements = getDexElements(getPathList(dexClassLoader));
+            Object dexPathListObj = getPathList(baseDexClassLoader);
+            Object oldDexElements = getDexElements(dexPathListObj);
+            //要添加的 add_dexElements
+            Object add_dexElements = getDexElements(getPathList(dexClassLoader));
 
             //合并
-            Object newDexElements = combineArray(pathDexElements, dexElements);
+            Object mergeDexElements = combineArray(add_dexElements, oldDexElements);
 
-            Object dexPathListObj = getPathList(baseDexClassLoader);
-            // 获取到dexPathListObj和newDexElements，完成替换，也实现了热修复功能
-            setField(dexPathListObj, dexPathListObj.getClass(), newDexElements);
+            // 获取到dexPathListObj和mergeDexElements,完成替换,也实现了热修复功能
+            setField(dexPathListObj, mergeDexElements);
         } catch (Exception e) {
             e.printStackTrace();
         }
+
     }
 
     /*
-    * 需要分析这两个类
-    * http://androidxref.com/6.0.0_r1/xref/libcore/dalvik/src/main/java/dalvik/system/BaseDexClassLoader.java
-    * http://androidxref.com/6.0.0_r1/xref/libcore/dalvik/src/main/java/dalvik/system/DexPathList.java#dexElements
-    * */
+     * 需要分析这两个类
+     * http://androidxref.com/6.0.0_r1/xref/libcore/dalvik/src/main/java/dalvik/system/BaseDexClassLoader.java
+     * http://androidxref.com/6.0.0_r1/xref/libcore/dalvik/src/main/java/dalvik/system/DexPathList.java#dexElements
+     * */
 
     //通过反射拿到 DexPathList 类里的 dexElements
     private static Object getDexElements(Object pathListObj) throws Exception {
@@ -109,8 +109,8 @@ public class Hotfix {
     }
 
     //替换dex文件
-    private static void setField(Object obj, Class<?> cls, Object value) throws Exception {
-        Field localField = cls.getDeclaredField("dexElements");
+    private static void setField(Object obj, Object value) throws Exception {
+        Field localField = obj.getClass().getDeclaredField("dexElements");
         localField.setAccessible(true);
         localField.set(obj, value);
     }
